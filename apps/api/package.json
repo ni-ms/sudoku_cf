@@ -1,0 +1,25 @@
+{
+  "name": "@sudoku-cf/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev --port 8787",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "migrate:local": "wrangler d1 migrations apply sudoku --local",
+    "migrate": "wrangler d1 migrations apply sudoku"
+  },
+  "dependencies": {
+    "@hono/zod-validator": "^0.4.1",
+    "@sudoku-cf/shared": "*",
+    "hono": "^4.6.14",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241218.0",
+    "typescript": "^5.7.2",
+    "wrangler": "^4.0.0"
+  }
+}

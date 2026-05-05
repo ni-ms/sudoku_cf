@@ -1,0 +1,26 @@
+name = "sudoku-api"
+main = "src/index.ts"
+compatibility_date = "2026-05-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+JWT_SECRET = "dev-secret-change-me"
+ALLOWED_ORIGIN = "http://localhost:5173"
+
+[[durable_objects.bindings]]
+name = "ROOM"
+class_name = "RoomDO"
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["RoomDO"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "sudoku"
+database_id = "4d53a0fe-9bd3-4c3d-9a20-cd9556f7e537"
+migrations_dir = "migrations"
+
+[[kv_namespaces]]
+binding = "PUZZLES"
+id = "df0fb5a11b9a4bcab7317e26087af2e2"
