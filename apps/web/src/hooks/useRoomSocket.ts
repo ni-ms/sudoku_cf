@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { ServerMessage, type ClientMessage } from '@sudoku-cf/shared'
 import { useGameStore } from '../store/gameStore'
+import { wsBase } from '../lib/config'
 
 interface Options {
   roomId: string
@@ -19,13 +20,20 @@ export function useRoomSocket({ roomId, token, myId, onConnected, onError }: Opt
   })
 
   useEffect(() => {
-    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const url = `${proto}//${window.location.host}/api/rooms/${roomId}/ws?token=${encodeURIComponent(token)}`
+    const defaultProto = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    const wsOrigin = wsBase() || `${defaultProto}//${window.location.host}`
+    const url = `${wsOrigin}/api/rooms/${roomId}/ws?token=${encodeURIComponent(token)}`
     const ws = new WebSocket(url)
     wsRef.current = ws
 
     ws.onopen = () => onConnected?.()
-    ws.onerror = () => onError?.('connection error')
+    ws.onerror = () => onError?.('WebSocket connection error')
+    ws.onclose = (ev) => {
+      if (ev.code !== 1000 && ev.code !== 1001) {
+        const reason = ev.reason ? `${ev.code}: ${ev.reason}` : `code ${ev.code}`
+        onError?.(`connection closed (${reason})`)
+      }
+    }
     ws.onmessage = (ev) => {
       let parsed: unknown
       try {

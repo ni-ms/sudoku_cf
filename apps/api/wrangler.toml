@@ -3,9 +3,16 @@ main = "src/index.ts"
 compatibility_date = "2026-05-01"
 compatibility_flags = ["nodejs_compat"]
 
+# Serves the built SPA from the same origin as the API — eliminates the
+# cross-origin routing mismatch that caused "failed to authenticate" in prod.
+[assets]
+directory = "../web/dist"
+binding = "ASSETS"
+
 [vars]
-JWT_SECRET = "dev-secret-change-me"
-ALLOWED_ORIGIN = "http://localhost:5173"
+# JWT_SECRET must be set via `wrangler secret put JWT_SECRET` before first deploy.
+# For local dev, put it in apps/api/.dev.vars (gitignored).
+ALLOWED_ORIGIN = "*"
 
 [[durable_objects.bindings]]
 name = "ROOM"

@@ -2,6 +2,7 @@ export interface Env {
   ROOM: DurableObjectNamespace
   DB: D1Database
   PUZZLES: KVNamespace
+  ASSETS: Fetcher
   JWT_SECRET: string
   ALLOWED_ORIGIN: string
 }

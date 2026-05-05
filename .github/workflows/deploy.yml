@@ -3,7 +3,7 @@ name: Deploy to Cloudflare
 on:
   push:
     branches:
-      - production # Change this to your production branch name (usually main or production)
+      - production
 
 jobs:
   deploy:
@@ -14,7 +14,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Node
-        uses: actions/checkout@v4
+        uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'npm'
@@ -24,18 +24,25 @@ jobs:
 
       - name: Build Web App
         run: npm run build:web
+        env:
+          # Set this GitHub Actions secret to your Worker URL (e.g. https://sudoku-api.<account>.workers.dev)
+          # so API calls bypass the Pages host and go directly to the Worker.
+          # Once you point your custom domain at the Worker and delete the Pages project,
+          # you can remove this and leave VITE_API_BASE_URL unset (same-origin via Workers Assets).
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
 
-      - name: Deploy API (Cloudflare Workers)
+      - name: Apply D1 migrations
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: 'apps/api'
+          command: d1 migrations apply sudoku --remote
+
+      - name: Deploy Worker (API + Web Assets)
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: 'apps/api'
           command: deploy
-
-      - name: Deploy Web App (Cloudflare Pages)
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy apps/web/dist --project-name=sudoku-web

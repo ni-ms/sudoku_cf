@@ -1,3 +1,5 @@
+import { apiUrl } from './config'
+
 const TOKEN_KEY = 'sudoku-cf:token'
 const USER_KEY = 'sudoku-cf:user'
 
@@ -36,12 +38,15 @@ export async function ensureGuest(name: string): Promise<{ token: string; user: 
   if (existing && existingToken && existing.name === name) {
     return { token: existingToken, user: existing }
   }
-  const res = await fetch('/api/auth/guest', {
+  const res = await fetch(apiUrl('/api/auth/guest'), {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ name }),
   })
-  if (!res.ok) throw new Error('failed to authenticate')
+  if (!res.ok) {
+    const body = await res.text().catch(() => '')
+    throw new Error(`failed to authenticate (HTTP ${res.status}${body ? `: ${body.slice(0, 120)}` : ''})`)
+  }
   const data = (await res.json()) as { token: string; user: AuthUser }
   saveSession(data.token, data.user)
   return data
