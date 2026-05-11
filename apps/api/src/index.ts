@@ -17,7 +17,7 @@ app.use('*', logger())
 // incompatible with origin: "*", so we omit it — auth uses Bearer tokens, not cookies.
 app.use('/api/*', (c, next) =>
   cors({
-    origin: c.env.ALLOWED_ORIGIN,
+    origin: c.env.ALLOWED_ORIGIN ?? '*',
     allowHeaders: ['Authorization', 'Content-Type'],
   })(c, next),
 )

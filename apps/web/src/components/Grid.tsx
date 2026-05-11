@@ -131,8 +131,8 @@ export function Grid({ onCellChange, onPlace }: Props) {
               className={[
                 'relative flex items-center justify-center bg-zinc-900 text-2xl font-medium transition-colors',
                 'sm:text-3xl',
-                cell.given ? 'text-zinc-100' : 'text-indigo-300',
-                isConflict ? 'text-rose-400' : '',
+                cell.given ? 'text-zinc-100' : (cell.wrong || isConflict) ? 'text-rose-400' : 'text-indigo-300',
+                cell.wrong && !isSelected ? 'bg-rose-500/10' : '',
                 isSelected ? 'bg-indigo-500/40 ring-2 ring-inset ring-indigo-400 z-10 animate-pulse-subtle' : '',
                 !isSelected && isSameDigit ? 'bg-indigo-500/20' : '',
                 !isSelected && !isSameDigit && isPeer ? 'bg-white/5' : '',

@@ -62,7 +62,7 @@ export function useRoomSocket({ roomId, token, myId, onConnected, onError }: Opt
           // Server confirms move; if it's our own, value is already optimistic — no-op.
           return
         case 'place_bad':
-          store.rollback(msg.cell)
+          store.markWrong(msg.cell)
           return
         case 'pencil':
           // Pencil marks are private; ignore if from another player.

@@ -12,9 +12,11 @@
     "dev:web": "npm --workspace apps/web run dev",
     "build:web": "npm --workspace apps/web run build",
     "deploy:api": "npm --workspace apps/api run deploy",
-    "deploy": "npm run build:web && npm run deploy:api",
+    "deploy": "npm run build:web && npm run migrate && npm run deploy:api",
     "migrate": "npm --workspace apps/api run migrate",
+    "migrate:local": "npm --workspace apps/api run migrate:local",
     "setup:cf": "tsx scripts/setup-cloudflare.ts",
+    "setup:local": "tsx scripts/setup-local.ts",
     "typecheck": "npm --workspace apps/api run typecheck && npm --workspace apps/web run typecheck",
     "seed:puzzles": "tsx scripts/seed-puzzles.ts"
   },

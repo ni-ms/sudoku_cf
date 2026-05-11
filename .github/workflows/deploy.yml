@@ -46,3 +46,9 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: 'apps/api'
           command: deploy
+          # Syncs JWT_SECRET from the GitHub Actions secret on every deploy.
+          # Add JWT_SECRET to Repository → Settings → Secrets → Actions.
+          secrets: |
+            JWT_SECRET
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}

@@ -6,12 +6,14 @@ export interface CellState {
   value: number
   given: boolean
   pencil: number[]
+  wrong: boolean
 }
 
 interface UndoEntry {
   cell: number
   prev: number
   prevPencil: number[]
+  prevWrong: boolean
 }
 
 interface GameState {
@@ -48,12 +50,13 @@ interface GameState {
   applyProgress: (playerId: string, filled: number) => void
   setStarted: (ts: number) => void
   setComplete: (winnerId: string, results: { playerId: string; name: string; durationMs: number | null; errors: number }[]) => void
-  rollback: (cell: number) => void
+  // Keeps the wrong value visible in rose — does not clear it.
+  markWrong: (cell: number) => void
   bumpError: () => void
 }
 
 function initCells(puzzle: number[]): CellState[] {
-  return puzzle.map((v) => ({ value: v, given: v !== 0, pencil: [] }))
+  return puzzle.map((v) => ({ value: v, given: v !== 0, pencil: [], wrong: false }))
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
@@ -95,6 +98,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       value: v,
       given: (s.puzzle[i] ?? 0) !== 0,
       pencil: pencil[i] ?? [],
+      wrong: false,
     }))
     set({
       givens: s.puzzle.slice(),
@@ -120,9 +124,9 @@ export const useGameStore = create<GameState>((set, get) => ({
     const { cells } = get()
     const c = cells[cell]
     if (!c || c.given) return
-    const entry: UndoEntry = { cell, prev: c.value, prevPencil: c.pencil.slice() }
+    const entry: UndoEntry = { cell, prev: c.value, prevPencil: c.pencil.slice(), prevWrong: c.wrong }
     const next = cells.slice()
-    next[cell] = { ...c, value, pencil: [] }
+    next[cell] = { ...c, value, pencil: [], wrong: false }
     set((s) => ({ cells: next, history: [...s.history, entry], redoStack: [] }))
   },
 
@@ -130,7 +134,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const { cells } = get()
     const c = cells[cell]
     if (!c || c.given || c.value !== 0) return
-    const entry: UndoEntry = { cell, prev: c.value, prevPencil: c.pencil.slice() }
+    const entry: UndoEntry = { cell, prev: c.value, prevPencil: c.pencil.slice(), prevWrong: c.wrong }
     const next = cells.slice()
     const idx = c.pencil.indexOf(value)
     const pencil =
@@ -143,9 +147,9 @@ export const useGameStore = create<GameState>((set, get) => ({
     const { cells } = get()
     const c = cells[cell]
     if (!c || c.given) return
-    const entry: UndoEntry = { cell, prev: c.value, prevPencil: c.pencil.slice() }
+    const entry: UndoEntry = { cell, prev: c.value, prevPencil: c.pencil.slice(), prevWrong: c.wrong }
     const next = cells.slice()
-    next[cell] = { ...c, value: 0, pencil: [] }
+    next[cell] = { ...c, value: 0, pencil: [], wrong: false }
     set((s) => ({ cells: next, history: [...s.history, entry], redoStack: [] }))
   },
 
@@ -156,8 +160,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     const next = cells.slice()
     const c = next[last.cell]
     if (!c) return
-    const redoEntry: UndoEntry = { cell: last.cell, prev: c.value, prevPencil: c.pencil.slice() }
-    next[last.cell] = { ...c, value: last.prev, pencil: last.prevPencil.slice() }
+    const redoEntry: UndoEntry = { cell: last.cell, prev: c.value, prevPencil: c.pencil.slice(), prevWrong: c.wrong }
+    next[last.cell] = { ...c, value: last.prev, pencil: last.prevPencil.slice(), wrong: last.prevWrong }
     set((s) => ({
       cells: next,
       history: history.slice(0, -1),
@@ -172,8 +176,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     const next = cells.slice()
     const c = next[last.cell]
     if (!c) return
-    const histEntry: UndoEntry = { cell: last.cell, prev: c.value, prevPencil: c.pencil.slice() }
-    next[last.cell] = { ...c, value: last.prev, pencil: last.prevPencil.slice() }
+    const histEntry: UndoEntry = { cell: last.cell, prev: c.value, prevPencil: c.pencil.slice(), prevWrong: c.wrong }
+    next[last.cell] = { ...c, value: last.prev, pencil: last.prevPencil.slice(), wrong: last.prevWrong }
     set((s) => ({
       cells: next,
       redoStack: redoStack.slice(0, -1),
@@ -206,12 +210,14 @@ export const useGameStore = create<GameState>((set, get) => ({
   setComplete: (winnerId, results) =>
     set({ winnerId, results, finishedAt: Date.now() }),
 
-  rollback: (cell) =>
+  // Keep the value the player entered but flag it rose-red. The server rejected
+  // it; the cell stays editable and reconciles when the correct digit is placed.
+  markWrong: (cell) =>
     set((s) => {
       const c = s.cells[cell]
       if (!c) return s
       const next = s.cells.slice()
-      next[cell] = { ...c, value: 0 }
+      next[cell] = { ...c, wrong: true }
       return { cells: next, errors: s.errors + 1 }
     }),
 

@@ -5,13 +5,81 @@ import { NumberPad } from '../components/NumberPad'
 import { Timer } from '../components/Timer'
 import { PlayerStrip } from '../components/PlayerStrip'
 import { useRoomSocket } from '../hooks/useRoomSocket'
-import { getToken, getUser } from '../lib/auth'
+import { ensureGuest, getToken, getUser } from '../lib/auth'
 import { useGameStore } from '../store/gameStore'
+import { CELLS } from '../lib/sudoku'
 
+// Play is just a gate: shows JoinGate when unauthenticated, PlayRoom otherwise.
+// Session is kept in state so ensureGuest() can update it without navigation.
 export function Play() {
   const { roomId } = useParams<{ roomId: string }>()
-  const token = getToken()
-  const user = getUser()
+  const [session, setSession] = useState<{ token: string; userId: string } | null>(() => {
+    const t = getToken()
+    const u = getUser()
+    return t && u ? { token: t, userId: u.id } : null
+  })
+
+  if (!session) {
+    return <JoinGate roomId={roomId!} onJoined={setSession} />
+  }
+
+  return <PlayRoom roomId={roomId!} token={session.token} myId={session.userId} />
+}
+
+function JoinGate({
+  roomId,
+  onJoined,
+}: {
+  roomId: string
+  onJoined: (s: { token: string; userId: string }) => void
+}) {
+  const [name, setName] = useState(() => getUser()?.name ?? '')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const handleJoin = async () => {
+    const trimmed = name.trim()
+    if (!trimmed) { setError('Enter a nickname first.'); return }
+    setBusy(true)
+    setError(null)
+    try {
+      const { token, user } = await ensureGuest(trimmed)
+      onJoined({ token, userId: user.id })
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to join.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="mx-auto flex min-h-screen max-w-sm flex-col items-center justify-center gap-6 px-4">
+      <div className="card w-full flex flex-col gap-4">
+        <h2 className="text-lg font-semibold">
+          Join room{' '}
+          <code className="rounded-lg bg-zinc-800 px-2 py-0.5 font-mono text-indigo-300">
+            {roomId}
+          </code>
+        </h2>
+        <input
+          className="input"
+          placeholder="Your nickname"
+          value={name}
+          maxLength={24}
+          autoFocus
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') void handleJoin() }}
+        />
+        <button onClick={() => void handleJoin()} disabled={busy} className="btn-primary">
+          {busy ? '…' : 'Join'}
+        </button>
+        {error && <p className="text-sm text-rose-400">{error}</p>}
+      </div>
+    </div>
+  )
+}
+
+function PlayRoom({ roomId, token, myId }: { roomId: string; token: string; myId: string }) {
   const [error, setError] = useState<string | null>(null)
   const [connected, setConnected] = useState(false)
 
@@ -19,21 +87,10 @@ export function Play() {
   const results = useGameStore((s) => s.results)
   const players = useGameStore((s) => s.players)
 
-  if (!token || !user || !roomId) {
-    return (
-      <div className="mx-auto max-w-2xl px-4 py-12 text-center">
-        <p className="text-zinc-300">You need to set a nickname first.</p>
-        <Link to="/" className="mt-4 inline-block text-indigo-400 hover:underline">
-          Go back home →
-        </Link>
-      </div>
-    )
-  }
-
   const { send } = useRoomSocket({
     roomId,
     token,
-    myId: user.id,
+    myId,
     onConnected: () => setConnected(true),
     onError: (m) => setError(m),
   })
@@ -53,7 +110,6 @@ export function Play() {
 
   useEffect(() => {
     return () => {
-      // Reset store when leaving room so next game starts clean.
       useGameStore.setState({
         roomId: null,
         players: [],
@@ -62,7 +118,15 @@ export function Play() {
         myId: null,
         winnerId: null,
         results: [],
+        startedAt: null,
         finishedAt: null,
+        errors: 0,
+        selected: null,
+        pencilMode: false,
+        history: [],
+        redoStack: [],
+        givens: new Array<number>(CELLS).fill(0),
+        cells: new Array(CELLS).fill(null).map(() => ({ value: 0, given: false, pencil: [], wrong: false })),
       })
     }
   }, [])
